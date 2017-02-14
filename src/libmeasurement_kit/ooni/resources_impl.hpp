@@ -51,7 +51,7 @@ void get_latest_release_impl(Callback<Error, std::string> callback,
     set_max_redirects(settings);
     auto url = get_base_url(settings) + "download/latest/version";
     logger->info("Downloading latest version; please, be patient...");
-    http_get(url, [=](Error error, Var<Response> response) {
+    get(url, [=](Error error, Var<Response> response) {
         if (error) {
             callback(error, "");
             return;
@@ -76,7 +76,7 @@ void get_manifest_as_json_impl(
     url += "/manifest.json";
     set_max_redirects(settings);
     logger->info("Downloading manifest; please, be patient...");
-    http_get(url, [=](Error error, Var<Response> response) {
+    get(url, [=](Error error, Var<Response> response) {
         nlohmann::json result;
         if (error) {
             callback(error, result);
@@ -148,7 +148,7 @@ void get_resources_for_country_impl(std::string latest, nlohmann::json manifest,
             url += "/";
             std::string path = sanitize_path(entry["path"]);
             url += path;
-            http_get(url,
+            get(url,
                      [=](Error error, Var<Response> response) {
                          if (error) {
                              cb(error);

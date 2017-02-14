@@ -130,7 +130,7 @@ void connect_many_impl(Var<ConnectManyCtx> ctx) {
         ctx->callback(err, ctx->connections);
         return;
     }
-    net_connect(ctx->address, ctx->port,
+    connect(ctx->address, ctx->port,
                 [=](Error err, Var<Transport> txp) {
                     if (err) {
                         ctx->callback(err, ctx->connections);
@@ -142,7 +142,7 @@ void connect_many_impl(Var<ConnectManyCtx> ctx) {
                     }
                     ctx->connections.push_back(std::move(txp));
                     --ctx->left;
-                    connect_many_impl<net_connect>(ctx);
+                    connect_many_impl<connect>(ctx);
                 },
                 ctx->settings, ctx->reactor, ctx->logger);
 }

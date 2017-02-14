@@ -13,7 +13,7 @@ namespace protocol {
 template <MK_MOCK_NAMESPACE(net, connect)>
 void connect_impl(Var<Context> ctx, Callback<Error> callback) {
     ctx->logger->debug("ndt: connect ...");
-    net_connect(ctx->address, ctx->port,
+    connect(ctx->address, ctx->port,
                 [=](Error err, Var<Transport> txp) {
                     ctx->logger->debug("ndt: connect ... %d", (int)err);
                     if (err) {
@@ -33,13 +33,13 @@ template <MK_MOCK_NAMESPACE(messages, format_msg_extended_login),
           MK_MOCK_NAMESPACE(messages, write)>
 void send_extended_login_impl(Var<Context> ctx, Callback<Error> callback) {
     ctx->logger->debug("ndt: send login ...");
-    ErrorOr<Buffer> out = messages_format_msg_extended_login(ctx->test_suite);
+    ErrorOr<Buffer> out = format_msg_extended_login(ctx->test_suite);
     if (!out) {
         ctx->logger->debug("ndt: send login ... %d", (int)out.as_error());
         callback(FormatExtendedLoginMessageError(out.as_error()));
         return;
     }
-    messages_write(ctx, *out, [=](Error err) {
+    write(ctx, *out, [=](Error err) {
         ctx->logger->debug("ndt: send login ... %d", (int)err);
         if (err) {
             callback(WriteExtendedLoginMessageError(err));
@@ -53,7 +53,7 @@ void send_extended_login_impl(Var<Context> ctx, Callback<Error> callback) {
 template <MK_MOCK_NAMESPACE(net, readn)>
 void recv_and_ignore_kickoff_impl(Var<Context> ctx, Callback<Error> callback) {
     ctx->logger->debug("ndt: recv and ignore kickoff ...");
-    net_readn(ctx->txp, ctx->buff, KICKOFF_MESSAGE_SIZE, [=](Error err) {
+    readn(ctx->txp, ctx->buff, KICKOFF_MESSAGE_SIZE, [=](Error err) {
         ctx->logger->debug("ndt: recv and ignore kickoff ... %d", (int)err);
         if (err) {
             callback(ReadingKickoffMessageError(err));
@@ -75,7 +75,7 @@ template <MK_MOCK_NAMESPACE(messages, read_msg),
           MK_MOCK(call_soon)>
 void wait_in_queue_impl(Var<Context> ctx, Callback<Error> callback) {
     ctx->logger->debug("ndt: wait in queue ...");
-    messages_read_msg(ctx, [=](Error err, uint8_t type, std::string s) {
+    read_msg(ctx, [=](Error err, uint8_t type, std::string s) {
         ctx->logger->debug("ndt: wait in queue ... %d", (int)err);
         if (err) {
             callback(ReadingSrvQueueMessageError(err));
@@ -105,21 +105,21 @@ void wait_in_queue_impl(Var<Context> ctx, Callback<Error> callback) {
             }
             if (*wait_time == SRV_QUEUE_HEARTBEAT) {
                 ctx->logger->info("Got HEARTBEAT message; responding...");
-                ErrorOr<Buffer> buff = messages_format_msg_waiting();
+                ErrorOr<Buffer> buff = format_msg_waiting();
                 if (!buff) {
                     callback(FormatMsgWaitingError(buff.as_error()));
                     return;
                 }
-                messages_write_noasync(ctx, *buff);
+                write_noasync(ctx, *buff);
             } else {
                 ctx->logger->info("Number of clients in queue: %d",
                                   *wait_time);
             }
             // TODO: in theory the server can keep us in queue forever...
             call_soon([=]() {
-                wait_in_queue_impl<messages_read_msg,
-                                   messages_format_msg_waiting,
-                                   messages_write_noasync,
+                wait_in_queue_impl<read_msg,
+                                   format_msg_waiting,
+                                   write_noasync,
                                    call_soon>(ctx, callback);
             }, ctx->reactor);
             return;
@@ -132,7 +132,7 @@ void wait_in_queue_impl(Var<Context> ctx, Callback<Error> callback) {
 template <MK_MOCK_NAMESPACE(messages, read_msg)>
 void recv_version_impl(Var<Context> ctx, Callback<Error> callback) {
     ctx->logger->debug("ndt: recv server version ...");
-    messages_read_msg(ctx, [=](Error err, uint8_t type, std::string s) {
+    read_msg(ctx, [=](Error err, uint8_t type, std::string s) {
         ctx->logger->debug("ndt: recv server version ... %d", (int)err);
         if (err) {
             callback(ReadingServerVersionMessageError(err));
@@ -152,7 +152,7 @@ void recv_version_impl(Var<Context> ctx, Callback<Error> callback) {
 template <MK_MOCK_NAMESPACE(messages, read_msg)>
 void recv_tests_id_impl(Var<Context> ctx, Callback<Error> callback) {
     ctx->logger->debug("ndt: recv tests ID ...");
-    messages_read_msg(ctx, [=](Error err, uint8_t type, std::string s) {
+    read_msg(ctx, [=](Error err, uint8_t type, std::string s) {
         ctx->logger->debug("ndt: recv tests ID ... %d", (int)err);
         if (err) {
             callback(ReadingTestsIdMessageError(err));
@@ -169,8 +169,9 @@ void recv_tests_id_impl(Var<Context> ctx, Callback<Error> callback) {
     }, ctx->reactor);
 }
 
-template <MK_MOCK_NAMESPACE(test_c2s, run), MK_MOCK_NAMESPACE(test_meta, run),
-          MK_MOCK_NAMESPACE(test_s2c, run)>
+template <MK_MOCK_NAMESPACE_PREFIX(test_c2s, run, c2s),
+          MK_MOCK_NAMESPACE_PREFIX(test_meta, run, meta),
+          MK_MOCK_NAMESPACE_PREFIX(test_s2c, run, s2c)>
 void run_tests_impl(Var<Context> ctx, Callback<Error> callback) {
 
     if (ctx->granted_suite.size() <= 0) {
@@ -190,13 +191,13 @@ void run_tests_impl(Var<Context> ctx, Callback<Error> callback) {
     std::function<void(Var<Context>, Callback<Error>)> func;
     const char *progress_descr = "";
     if (*num == TEST_C2S) {
-        func = test_c2s_run;
+        func = c2s_run;
         progress_descr = "Upload test";
     } else if (*num == TEST_META) {
-        func = test_meta_run;
+        func = meta_run;
         progress_descr = "Send results to test server";
     } else if (*num == TEST_S2C or *num == TEST_S2C_EXT) {
-        func = test_s2c_run;
+        func = s2c_run;
         if (*num == TEST_S2C_EXT) {
             progress_descr = "Multi-stream download test";
         } else {
@@ -230,15 +231,14 @@ void run_tests_impl(Var<Context> ctx, Callback<Error> callback) {
             callback(TestFailedError(err));
             return;
         }
-        run_tests_impl<test_c2s_run, test_meta_run, test_s2c_run>(ctx,
-                                                                  callback);
+        run_tests_impl<c2s_run, meta_run, s2c_run>(ctx, callback);
     });
 }
 
 template <MK_MOCK_NAMESPACE(messages, read_msg)>
 void recv_results_and_logout_impl(Var<Context> ctx, Callback<Error> callback) {
     ctx->logger->debug("ndt: recv RESULTS ...");
-    messages_read_msg(ctx, [=](Error err, uint8_t type, std::string s) {
+    read_msg(ctx, [=](Error err, uint8_t type, std::string s) {
         ctx->logger->debug("ndt: recv RESULTS ... %d", (int)err);
         if (err) {
             callback(ReadingResultsOrLogoutError(err));
@@ -253,7 +253,7 @@ void recv_results_and_logout_impl(Var<Context> ctx, Callback<Error> callback) {
                 }
             }
             // XXX: here we have the potential to loop forever...
-            recv_results_and_logout_impl<messages_read_msg>(ctx, callback);
+            recv_results_and_logout_impl<read_msg>(ctx, callback);
             return;
         }
         if (type != MSG_LOGOUT) {
@@ -271,7 +271,7 @@ void wait_close_impl(Var<Context> ctx, Callback<Error> callback) {
     ctx->txp->set_timeout(1.0);
     // TODO: here we should probably use ctx->buff
     Var<Buffer> buffer(new Buffer);
-    net_read(ctx->txp, buffer, [=](Error err) {
+    read(ctx->txp, buffer, [=](Error err) {
         ctx->logger->debug("ndt: wait close ... %d", (int)err);
         // Note: the server SHOULD close the connection
         if (err == EofError()) {

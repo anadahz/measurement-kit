@@ -25,10 +25,14 @@ Which is arguably faster than writing the following:
 
 // Same as MK_MOCK but with namespace
 #define MK_MOCK_NAMESPACE(ns_, name_)                                          \
-    decltype(ns_::name_) ns_##_##name_ = ns_::name_
+    decltype(ns_::name_) name_ = ns_::name_
 
 // Same as MK_MOCK_NAMESPACE but with suffix
 #define MK_MOCK_NAMESPACE_SUFFIX(ns_, name_, suffix_)                          \
-    decltype(ns_::name_) ns_##_##name_##_##suffix_ = ns_::name_
+    decltype(ns_::name_) name_##_##suffix_ = ns_::name_
+
+// Same as MK_MOCK_NAMESPACE but with prefix
+#define MK_MOCK_NAMESPACE_PREFIX(ns_, name_, prefix_)                          \
+    decltype(ns_::name_) prefix_##_##name_ = ns_::name_
 
 #endif

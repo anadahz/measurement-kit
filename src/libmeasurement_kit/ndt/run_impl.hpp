@@ -125,7 +125,7 @@ void run_impl(Var<Entry> entry, Callback<Error> callback, Settings settings,
                                  reactor, logger);
         return;
     }
-    mlabns_query(settings.get<std::string>("mlabns_tool_name", "ndt"),
+    query(settings.get<std::string>("mlabns_tool_name", "ndt"),
                  [=](Error err, mlabns::Reply reply) {
                      if (err) {
                          callback(MlabnsQueryError(err));

@@ -58,7 +58,7 @@ void post_impl(Var<Transport> transport, std::string append_to_url,
         headers["Content-Type"] = "application/json";
     }
     logger->debug("POST %s '%s'...", url.c_str(), body.c_str());
-    http_request_sendrecv(transport, settings, headers, body,
+    request_sendrecv(transport, settings, headers, body,
                           [=](Error err, Var<Response> response) {
                               logger->debug("POST %s '%s'... %d", url.c_str(),
                                             body.c_str(), err.code);
@@ -119,7 +119,7 @@ void connect_impl(Settings settings, Callback<Error, Var<Transport>> callback,
         url = settings["collector_base_url"];
     }
     settings["http/url"] = url;
-    http_request_connect(settings, callback, reactor, logger);
+    request_connect(settings, callback, reactor, logger);
 }
 
 template <MK_MOCK_NAMESPACE(collector, post)>
@@ -150,7 +150,7 @@ void create_report_impl(Var<Transport> transport, Entry entry,
     request["format"] = "json";
     std::string body = request.dump();
 
-    collector_post(transport, "/report", body,
+    post(transport, "/report", body,
                    [=](Error err, nlohmann::json reply) {
                        if (err) {
                            callback(err, "");
@@ -177,12 +177,12 @@ void connect_and_create_report_impl(report::Entry entry,
                                     Callback<Error, std::string> callback,
                                     Settings settings, Var<Reactor> reactor,
                                     Var<Logger> logger) {
-    collector_connect(settings, [=](Error error, Var<Transport> txp) {
+    connect(settings, [=](Error error, Var<Transport> txp) {
         if (error) {
             callback(error, "");
             return;
         }
-        collector_create_report(txp, entry, [=](Error error, std::string rid) {
+        create_report(txp, entry, [=](Error error, std::string rid) {
             txp->close([=]() {
                 callback(error, rid);
             });
@@ -222,7 +222,7 @@ void update_report_impl(Var<Transport> transport, std::string report_id,
     Entry request{{"format", "json"}};
     request["content"] = entry;
     std::string body = request.dump();
-    collector_post(transport, "/report/" + report_id, body,
+    post(transport, "/report/" + report_id, body,
                    [=](Error err, nlohmann::json) {
                        callback(err);
                    },
@@ -235,12 +235,12 @@ void connect_and_update_report_impl(std::string report_id, report::Entry entry,
                                     Callback<Error> callback,
                                     Settings settings, Var<Reactor> reactor,
                                     Var<Logger> logger) {
-    collector_connect(settings, [=](Error error, Var<Transport> txp) {
+    connect(settings, [=](Error error, Var<Transport> txp) {
         if (error) {
             callback(error);
             return;
         }
-        collector_update_report(txp, report_id, entry, [=](Error error) {
+        update_report(txp, report_id, entry, [=](Error error) {
             txp->close([=]() {
                 callback(error);
             });
@@ -252,7 +252,7 @@ template <MK_MOCK_NAMESPACE(collector, post)>
 void close_report_impl(Var<Transport> transport, std::string report_id,
                        Callback<Error> callback, Settings settings,
                        Var<Reactor> reactor, Var<Logger> logger) {
-    collector_post(transport, "/report/" + report_id + "/close", "",
+    post(transport, "/report/" + report_id + "/close", "",
                    [=](Error err, nlohmann::json) {
                        callback(err);
                    },
@@ -265,12 +265,12 @@ void connect_and_close_report_impl(std::string report_id,
                                    Callback<Error> callback,
                                    Settings settings, Var<Reactor> reactor,
                                    Var<Logger> logger) {
-    collector_connect(settings, [=](Error error, Var<Transport> txp) {
+    connect(settings, [=](Error error, Var<Transport> txp) {
         if (error) {
             callback(error);
             return;
         }
-        collector_close_report(txp, report_id, [=](Error error) {
+        close_report(txp, report_id, [=](Error error) {
             txp->close([=]() {
                 callback(error);
             });
@@ -287,7 +287,7 @@ void update_and_fetch_next_impl(Var<std::istream> file, Var<Transport> txp,
                                 Callback<Error> callback, Settings settings,
                                 Var<Reactor> reactor, Var<Logger> logger) {
     logger->info("adding entry report #%d...", line);
-    collector_update_report(
+    update_report(
         txp, report_id, entry,
         [=](Error err) {
             logger->info("adding entry report #%d... %d", line, err.code);
@@ -300,7 +300,7 @@ void update_and_fetch_next_impl(Var<std::istream> file, Var<Transport> txp,
             logger->debug("scheduling read of next entry...");
             reactor->call_soon([=]() {
                 logger->debug("reading next entry");
-                ErrorOr<Entry> entry = collector_get_next_entry(file, logger);
+                ErrorOr<Entry> entry = get_next_entry(file, logger);
                 if (!entry) {
                     if (entry.as_error() != FileEofError()) {
                         txp->close([=]() { callback(entry.as_error()); });
@@ -314,8 +314,8 @@ void update_and_fetch_next_impl(Var<std::istream> file, Var<Transport> txp,
                         settings, reactor, logger);
                     return;
                 }
-                update_and_fetch_next_impl<collector_update_report,
-                                           collector_get_next_entry>(
+                update_and_fetch_next_impl<update_report,
+                                           get_next_entry>(
                     file, txp, report_id, line + 1, *entry, callback, settings,
                     reactor, logger);
             });
@@ -336,7 +336,7 @@ void submit_report_impl(std::string filepath, std::string collector_base_url,
         callback(CannotOpenReportError());
         return;
     }
-    ErrorOr<Entry> entry = collector_get_next_entry(file, logger);
+    ErrorOr<Entry> entry = get_next_entry(file, logger);
     if (!entry) {
         callback(entry.as_error());
         return;
@@ -347,7 +347,7 @@ void submit_report_impl(std::string filepath, std::string collector_base_url,
         settings["collector_front_domain"] = collector_front_domain;
     }
     logger->info("connecting to collector %s...", collector_base_url.c_str());
-    collector_connect(
+    connect(
         settings,
         [=](Error err, Var<Transport> txp) {
             logger->info("connecting to collector %s... %d",
@@ -357,7 +357,7 @@ void submit_report_impl(std::string filepath, std::string collector_base_url,
                 return;
             }
             logger->info("creating report...");
-            collector_create_report(
+            create_report(
                 txp, *entry,
                 [=](Error err, std::string report_id) {
                     logger->info("creating report... %d", err.code);

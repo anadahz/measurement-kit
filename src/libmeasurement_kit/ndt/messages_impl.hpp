@@ -30,7 +30,7 @@ void read_ll_impl(Var<Context> ctx,
                   Var<Reactor> reactor) {
 
     // Receive message type (1 byte) and length (2 bytes)
-    net_readn_first(ctx->txp, ctx->buff, 3, [=](Error err) {
+    readn_first(ctx->txp, ctx->buff, 3, [=](Error err) {
         if (err) {
             callback(ReadingMessageTypeLengthError(err), 0, "");
             return;
@@ -42,7 +42,7 @@ void read_ll_impl(Var<Context> ctx,
         // hence, if that's not the case, we'll see an exception
 
         // Now read the message payload (`*length` bytes in total)
-        net_readn_second(ctx->txp, ctx->buff, *length, [=](Error err) {
+        readn_second(ctx->txp, ctx->buff, *length, [=](Error err) {
             if (err) {
                 callback(ReadingMessagePayloadError(err), 0, "");
                 return;

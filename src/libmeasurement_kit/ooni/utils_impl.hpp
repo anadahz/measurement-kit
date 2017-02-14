@@ -15,7 +15,7 @@ template <MK_MOCK_NAMESPACE(http, get)>
 void ip_lookup_impl(Callback<Error, std::string> callback, Settings settings = {},
                Var<Reactor> reactor = Reactor::global(),
                Var<Logger> logger = Logger::global()) {
-    http_get("http://geoip.ubuntu.com/lookup",
+    get("http://geoip.ubuntu.com/lookup",
             [=](Error err, Var<http::Response> response) {
                 if (err) {
                     callback(err, "");
@@ -45,7 +45,7 @@ void resolver_lookup_impl(Callback<Error, std::string> callback,
                           Settings settings = {},
                           Var<Reactor> reactor = Reactor::global(),
                           Var<Logger> logger = Logger::global()) {
-  dns_query("IN", "A", "whoami.akamai.net",
+  query("IN", "A", "whoami.akamai.net",
       [=](Error error, Var<dns::Message> message) {
         if (!error) {
           for (auto answer : message->answers) {

@@ -21,7 +21,7 @@ void run_impl(Var<Context> ctx, Callback<Error> callback) {
 
     // The server sends the PREPARE and START messages back to back
     ctx->logger->debug("ndt: recv TEST_PREPARE ...");
-    messages_read_msg_first(ctx, [=](Error err, uint8_t type, std::string) {
+    read_msg_first(ctx, [=](Error err, uint8_t type, std::string) {
         ctx->logger->debug("ndt: recv TEST_PREPARE ... %d", (int)err);
         if (err) {
             callback(ReadingTestPrepareError(err));
@@ -32,7 +32,7 @@ void run_impl(Var<Context> ctx, Callback<Error> callback) {
             return;
         }
         ctx->logger->debug("ndt: recv TEST_START ...");
-        messages_read_msg_second(
+        read_msg_second(
             ctx, [=](Error err, uint8_t type, std::string) {
                 ctx->logger->debug("ndt: recv TEST_START ... %d", (int)err);
                 if (err) {
@@ -48,7 +48,7 @@ void run_impl(Var<Context> ctx, Callback<Error> callback) {
                 ErrorOr<Buffer> out;
 
                 ctx->logger->debug("send client.version");
-                out = messages_format_test_msg_first(
+                out = format_test_msg_first(
                     "client.version:" MEASUREMENT_KIT_VERSION);
                 if (!out) {
                     callback(SerializingClientVersionError());
@@ -58,7 +58,7 @@ void run_impl(Var<Context> ctx, Callback<Error> callback) {
                 ctx->logger->debug("send client.version ... 0");
 
                 ctx->logger->debug("send client.application");
-                out = messages_format_test_msg_second(
+                out = format_test_msg_second(
                     "client.application:measurement-kit");
                 if (!out) {
                     callback(SerializingClientApplicationError());
@@ -73,12 +73,12 @@ void run_impl(Var<Context> ctx, Callback<Error> callback) {
 
                 // Now we send the empty TEST message to signal we're done
                 ctx->logger->debug("ndt: send final empty message");
-                out = messages_format_test_msg_third("");
+                out = format_test_msg_third("");
                 if (!out) {
                     callback(SerializingFinalMetaError());
                     return;
                 }
-                messages_write(ctx, *out, [=](Error err) {
+                write(ctx, *out, [=](Error err) {
                     ctx->logger->debug("ndt: send final empty message ... %d",
                                        (int)err);
                     if (err) {
@@ -90,7 +90,7 @@ void run_impl(Var<Context> ctx, Callback<Error> callback) {
 
                     // Now we read the FINALIZE message
                     ctx->logger->debug("ndt: recv TEST_FINALIZE ...");
-                    messages_read_msg_third(
+                    read_msg_third(
                         ctx, [=](Error err, uint8_t type, std::string) {
                             ctx->logger->debug("ndt: recv TEST_FINALIZE ... %d",
                                                (int)err);

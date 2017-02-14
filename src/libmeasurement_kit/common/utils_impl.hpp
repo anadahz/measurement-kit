@@ -24,36 +24,36 @@ template <typename T, MK_MOCK_NAMESPACE(std, fopen),
           MK_MOCK_NAMESPACE_SUFFIX(std, fseek, 2),
           MK_MOCK_NAMESPACE(std, fread), MK_MOCK_NAMESPACE(std, fclose)>
 ErrorOr<std::vector<T>> slurpv_impl(std::string p) {
-    FILE *filep = std_fopen(p.c_str(), "rb");
+    FILE *filep = fopen(p.c_str(), "rb");
     if (filep == nullptr) {
         return FileIoError();
     }
-    if (std_fseek_1(filep, 0, SEEK_END) != 0) {
-        std_fclose(filep);
+    if (fseek_1(filep, 0, SEEK_END) != 0) {
+        fclose(filep);
         return FileIoError();
     }
     // Note: ftello() might be better for reading very large files but
     // honestly I do think we should use some kind of mmap for them.
-    long pos = std_ftell(filep);
+    long pos = ftell(filep);
     if (pos < 0) {
-        std_fclose(filep);
+        fclose(filep);
         return FileIoError();
     }
     std::vector<T> result;
     // Note: cast to unsigned safe because we excluded negative case above
     result.resize((unsigned long)pos, 0);
-    if (std_fseek_2(filep, 0, SEEK_SET) != 0) {
-        std_fclose(filep);
+    if (fseek_2(filep, 0, SEEK_SET) != 0) {
+        fclose(filep);
         return FileIoError();
     }
-    size_t nread = std_fread(result.data(), 1, result.size(), filep);
+    size_t nread = fread(result.data(), 1, result.size(), filep);
     // Note: cast to unsigned safe because we excluded negative case above
     if ((unsigned long)pos != nread) {
-        std_fclose(filep);
+        fclose(filep);
         return FileIoError();
     }
     // Note: afaik fclose() should not fail when we're just reading
-    if (std_fclose(filep) != 0) {
+    if (fclose(filep) != 0) {
         return FileIoError();
     }
     return result;
