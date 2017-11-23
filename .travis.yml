@@ -11,4 +11,4 @@ before_script:
 
 script:
   - docker run --rm --privileged multiarch/qemu-user-static:register --reset
-  - docker build -t multiarch/debian-debootstrap:armhf-jessie -f build/ .
+  - docker build -t multiarch/debian-debootstrap:armhf-jessie -f build/Dockerfile .

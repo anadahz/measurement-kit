@@ -1,5 +1,6 @@
 FROM multiarch/debian-debootstrap:armel-jessie
-RUN apt-get -qqy install dh-autoreconf libevent-dev llvm clang git-core wget gzip
+RUN apt update
+RUN apt-get install -qqy dh-autoreconf libevent-dev llvm clang git wget gzip
 RUN git clone https://github.com/measurement-kit/measurement-kit &&\
     cd measurement-kit
 RUN ./autogen.sh &&\
